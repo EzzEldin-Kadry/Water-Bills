@@ -1,0 +1,288 @@
+﻿@page "/"
+@using NWC_Bills.Models;
+@using NWC_Bills.Services;
+
+@inject IUnitOfWork _unitOfWork;
+@inject IJSRuntime jsRunTime;
+
+<PageTitle>Register Invoice</PageTitle>
+
+    <EditForm EditContext="@editContext">
+        <DataAnnotationsValidator />
+        <div class="p-3" style="float:right">
+            <div class="form-group">
+                <label class="form-label">رقم الاشتراك</label>
+                <InputText class="form-control form-control-lg mb-lg-auto" placeholder="2023-2-492 :مثــــال " 
+                    @bind-Value="invoice.NwcInvoicesSubscriptionNo" id="code" dir="auto" />
+                <ValidationMessage For="@(() => invoice.NwcInvoicesSubscriptionNo)"></ValidationMessage>
+            </div>
+            <div class="form-group mt-3">
+                <button type="submit" class="btn btn-primary" @onclick="@( () => ShowInvoiceInputs())" 
+                    id="show-btn">ادخل بيانات الفاتورة</button>
+            </div>
+        </div>
+        <div class="mt-3">
+            @if (invoice.SubscriberFile is not null)
+            {
+                <table class="table table-striped table-bordered table-hover" style="font-size:15px">
+                    <thead>
+                        <tr>
+                            <th>الإسم</th>
+                            <th>رقم هوية المشترك</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>@invoice.SubscriberFile.NwcSubscriberFileName</td>
+                            <td>@invoice.SubscriberFile.NwcSubscriberFileId</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <table class="table table-striped table-bordered table-hover" style="font-size:15px">
+                    <thead>
+                        <tr>
+                            <th>عدد الوحدات</th>
+                            <th>هل يوجد صرف صحي؟</th>
+                            <th>القراءة السابقة</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>@invoice.SubscriptionFile.NwcSubscriptionFileUnitNo</td>
+                            @if (invoice.SubscriptionFile.NwcSubscriptionFileIsThereSanitation)
+                            {
+                                <td>نعم</td>
+                            }
+                            else
+                            {
+                                <td>لا</td>
+                            }
+                            <td>@invoice.SubscriptionFile.NwcSubscriptionFileLastReadingMeter</td>
+                        </tr>
+                    </tbody>
+                </table>
+            <div class="p-3" style="float:right">
+                <div class="form-group">
+                    <label class="form-label">تاريخ الفاتورة</label>
+                    <input class="form-control" type="date"  @bind-value="invoice.NwcInvoicesDate" />
+                    <label class="form-label">من تاريخ</label>
+                    <input class="form-control" type="date" @bind-value="invoice.NwcInvoicesFrom" />
+                    <label class="form-label">القراءة الحالية</label>
+                    <input class="form-control" type="text" @bind-value="invoice.NwcInvoicesCurrentConsumptionAmount" 
+                        onkeypress="return event.charCode >= 48 && event.charCode <= 57" />
+                    <label class="form-label">قيمة رسوم الخدمة</label>
+                    <input class="form-control" type="text" @bind-value="invoice.NwcInvoicesServiceFee"
+                           onkeypress="return event.charCode >= 48 && event.charCode <= 57 || event.charCode === 46" />
+                    <br/>
+                    <div class="input-group">
+                        <label class="form-label" style="font-family:sans-serif; margin-top:18px; margin-right:5px">
+                            <span style="font-size: larger">%</span>
+                        </label>
+                        <input class="form-control" type="text" style="margin-right:5px" @bind-value="invoice.NwcInvoicesTaxRate"
+                               onkeypress="return event.charCode >= 48 && event.charCode <= 57 || event.charCode === 46" />
+                        <label class="form-label">نسبة الضريبة</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <br/>
+                    <button type="submit" class="btn btn-primary" @onclick="@( () => CalculateInvoice())" 
+                        id="show-btn">حساب قيمة الفاتورة</button>
+                </div>
+                @if (invoice.NwcInvoicesAmountConsumption != 0)
+                {
+                    <br />
+                    <label class="form-label">رقم الفاتورة</label>
+                    <input type="text" class="form-control" name="value" value= "@invoice.NwcInvoicesNo" disabled />
+                    <br />
+                    <label class="form-label">إلى تاريخ</label>
+                    <input type="text" class="form-control" name="value" 
+                        value="@invoice.NwcInvoicesTo.Year / @invoice.NwcInvoicesTo.Month / @invoice.NwcInvoicesTo.Day" disabled />
+                    <br />
+                    <label class="form-label">كمية الاستهلاك</label>
+                    <input type="text" class="form-control" name="value" value="@invoice.NwcInvoicesAmountConsumption" disabled />
+                    <br />
+                    <label class="form-label">قيمة استهلاك المياه</label>
+                    <input type="text" class="form-control" name="value" value="@invoice.NwcInvoicesConsumptionValue" disabled />
+                    <br />
+                    <label class="form-label">قيمة استهلاك الصرف الصحي</label>
+                    <input type="text" class="form-control" name="value" value="@invoice.NwcInvoicesWastewaterConsumptionValue" disabled />
+                    <br />
+                    <label class="form-label">قيمة الفاتورة</label>
+                    <input type="text" class="form-control" name="value" value="@invoice.NwcInvoicesTotalInvoice" disabled />
+                    <br />
+                    <label class="form-label">إجمالي الفاتورة</label>
+                    <input type="text" class="form-control" name="value" value="@invoice.NwcInvoicesTotalBill" disabled />
+                    <br />
+                    <button type="submit" class="btn btn-danger" @onclick="@( () => SaveInvoice())"
+                            id="show-btn">
+                        حفظ الفاتورة
+                    </button>
+                }
+            </div>
+        }
+        </div>
+        
+    </EditForm>
+
+@code {
+
+    NwcInvoice? invoice = new();
+    EditContext? editContext;
+    IList<NwcDefaultSliceValue> slices;
+    protected override void OnInitialized()
+    {
+        editContext = new(invoice);
+    }
+    private async Task ShowInvoiceInputs()
+    {
+        invoice.NwcInvoicesAmountConsumption = 0;
+        if (invoice.NwcInvoicesSubscriptionNo is null || invoice.NwcInvoicesSubscriptionNo is "")
+        {
+            await jsRunTime.InvokeAsync<string>("fadeAlret", "يجب ادخال رقم!");
+            return;
+        }
+        invoice.NwcInvoicesSubscriptionNo = invoice.NwcInvoicesSubscriptionNo.Trim();
+        if (invoice.NwcInvoicesSubscriptionNo.Length > 0
+            && invoice.NwcInvoicesSubscriptionNo.Length < 11)
+        {
+            if (!_unitOfWork.SubscriptionData.AnyBySubscription(invoice.NwcInvoicesSubscriptionNo))
+            {
+                await jsRunTime.InvokeAsync<string>("fadeAlret", "الرقم غير موجود!");
+                return;
+            }
+            var subscription = _unitOfWork.SubscriptionData
+            .GetFirstOrDefault(x => x.NwcSubscriptionFileNo == invoice.NwcInvoicesSubscriptionNo
+            , includeProperties: "SubscriberFile");
+            invoice.SubscriptionFile = subscription;
+            invoice.SubscriberFile = subscription.SubscriberFile;
+            invoice.NwcInvoicesSubscriberNo = invoice.SubscriberFile.NwcSubscriberFileId;
+            invoice.NwcInvoicesDate = DateTime.Now.Date;
+            invoice.NwcInvoicesFrom = DateTime.Now.Date;
+            await OnAfterRenderAsync(false);
+        }
+        else
+        {
+            await jsRunTime.InvokeAsync<string>("fadeAlret", "الرقم غير صحيح!");
+        }
+    }
+    private async Task CalculateInvoice()
+    {
+        invoice.NwcInvoicesPreviousConsumptionAmount = (int)invoice.SubscriptionFile.NwcSubscriptionFileLastReadingMeter;
+        if (invoice.NwcInvoicesCurrentConsumptionAmount <= invoice.NwcInvoicesPreviousConsumptionAmount )
+        {
+            await jsRunTime.InvokeAsync<string>("fadeAlret", "القراءة الحالية غير صحيحة!");
+            return;
+        }
+        invoice.NwcInvoicesTo = invoice.NwcInvoicesFrom.AddMonths(1).AddDays(-1);
+        //Amount Consumption Calc
+        invoice.NwcInvoicesAmountConsumption 
+            = invoice.NwcInvoicesCurrentConsumptionAmount - invoice.NwcInvoicesPreviousConsumptionAmount;
+
+        //Generate Invoice No
+        var highestValue = _unitOfWork.InvoiceData.GetHeighestNo();
+        invoice.NwcInvoicesYear = invoice.NwcInvoicesDate.Year.ToString().Substring(2, 2);
+        invoice.NwcInvoicesNo = invoice.NwcInvoicesDate.Year.ToString() + '-' + invoice.NwcInvoicesDate.Month.ToString() + '-';
+        string[] splited = highestValue.Split('-');
+        if ((splited[0]) == invoice.NwcInvoicesDate.Year.ToString()
+            && (int.Parse(splited[1]) == invoice.NwcInvoicesDate.Month))
+        {
+            int incremented = int.Parse(splited[2]) + 1;
+            invoice.NwcInvoicesNo += incremented.ToString();
+        }
+        else
+            invoice.NwcInvoicesNo += "1";
+        invoice.NwcInvoicesRrealEstateTypes = invoice.SubscriptionFile.NwcSubscriptionFileRrealEstateTypesCode;
+        invoice.NwcInvoicesIsThereSanitation = invoice.SubscriptionFile.NwcSubscriptionFileIsThereSanitation;
+        slices = _unitOfWork.DefaultSlice.GetAll();
+        if(slices is null)
+        {
+            await jsRunTime.InvokeAsync<string>("fadeAlret", "حدث خطأ أثناء الحساب!");
+            return;
+        }
+        //Calculation by Slices
+        invoice.NwcInvoicesConsumptionValue 
+            = CalculateWaterConsumtionValue(slices, invoice.SubscriptionFile.NwcSubscriptionFileUnitNo, invoice.NwcInvoicesAmountConsumption);
+        invoice.NwcInvoicesConsumptionValue = Round(invoice.NwcInvoicesConsumptionValue);
+        if (invoice.NwcInvoicesIsThereSanitation)
+            invoice.NwcInvoicesWastewaterConsumptionValue = (decimal)(invoice.NwcInvoicesConsumptionValue / (decimal)2);
+        else
+            invoice.NwcInvoicesWastewaterConsumptionValue = 0;
+        invoice.NwcInvoicesWastewaterConsumptionValue = Round(invoice.NwcInvoicesWastewaterConsumptionValue);
+        invoice.NwcInvoicesTotalInvoice 
+            = invoice.NwcInvoicesConsumptionValue + invoice.NwcInvoicesWastewaterConsumptionValue + invoice.NwcInvoicesServiceFee;
+        invoice.NwcInvoicesTotalInvoice = Round(invoice.NwcInvoicesTotalInvoice);
+        invoice.NwcInvoicesTaxValue = (invoice.NwcInvoicesTotalInvoice * invoice.NwcInvoicesTaxRate / (decimal)100);
+        invoice.NwcInvoicesTaxValue = Round(invoice.NwcInvoicesTaxValue);
+        invoice.NwcInvoicesTotalBill = (Round(invoice.NwcInvoicesTaxValue + invoice.NwcInvoicesTotalInvoice)).ToString();
+        await OnAfterRenderAsync(false);
+    }
+    private decimal CalculateWaterConsumtionValue(IList<NwcDefaultSliceValue> slices, int unitNo, int? amountCons)
+    {
+        int prev = 0;
+        int next = slices[0].NwcDefaultSliceValuesCondtion;
+        decimal value = 0m;
+        for (int i = 0; i < slices.Count - 1; i++) 
+        {
+            int tempUnitNo = unitNo;
+            int current = next - prev;
+            while (tempUnitNo > 0 && amountCons > 0)
+            {
+                if (amountCons - current >= 0)
+                {
+                    amountCons -= current;
+                    value += (decimal)((decimal)current * slices[i].NwcDefaultSliceValuesWaterPrice);
+                }
+                else
+                {
+                    value += (decimal)((decimal)amountCons * slices[i].NwcDefaultSliceValuesWaterPrice);
+                    amountCons = 0;
+                    break;
+                }
+                tempUnitNo--;
+            }
+            prev = slices[i].NwcDefaultSliceValuesCondtion;
+            next = slices[i + 1].NwcDefaultSliceValuesCondtion;
+        }
+        if (amountCons != 0)
+            value += (decimal)((decimal)amountCons * slices[slices.Count - 1].NwcDefaultSliceValuesWaterPrice);
+        return value;
+    }
+    private decimal Round(decimal num)
+    {
+        return Math.Round(num, 2, MidpointRounding.AwayFromZero);
+    }
+    private async Task SaveInvoice()
+    {
+        if(invoice.NwcInvoicesSubscriptionNo != invoice.SubscriptionFile.NwcSubscriptionFileNo.Trim())
+        {
+            await jsRunTime.InvokeAsync<string>("fadeAlret", "حدث خطأ أثناء حفظ الفاتورة!");
+            return;
+        }
+        if(invoice.NwcInvoicesCurrentConsumptionAmount - invoice.NwcInvoicesPreviousConsumptionAmount != invoice.NwcInvoicesAmountConsumption)
+        {
+            await jsRunTime.InvokeAsync<string>("fadeAlret", "حدث خطأ أثناء حفظ الفاتورة!");
+            return;
+        }
+        bool confirmed = await jsRunTime.InvokeAsync<bool>("confirm", "هل تريد حفظ الفاتورة بشكل نهائي؟");
+        if (confirmed)
+        {
+            if(_unitOfWork.InvoiceData.AnyInvoiceNo(invoice.NwcInvoicesNo))
+            {
+                await jsRunTime.InvokeAsync<string>("fadeAlret", "!رقم الفاتورة موجود بالفعل");
+                return;
+            }
+            invoice.SubscriberFile = null;
+            invoice.SubscriptionFile = null;
+            _unitOfWork.InvoiceData.Add(invoice);
+            await _unitOfWork.Save();
+            _unitOfWork.ClearTracks();
+            await jsRunTime.InvokeAsync<string>("fadeAlret", "!تم تسجيل الفاتورة");
+            return;
+        }
+        else
+        {
+            await jsRunTime.InvokeAsync<string>("fadeAlret", "!فشل تسجيل الفاتورة");
+            return;
+        }
+    }
+}

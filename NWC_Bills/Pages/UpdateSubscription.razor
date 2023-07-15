@@ -1,0 +1,168 @@
+﻿@page "/UpdateSubscription"
+@using NWC_Bills.Models;
+@using NWC_Bills.Services;
+
+@inject IUnitOfWork _unitOfWork;
+@inject IJSRuntime jsRunTime;
+
+<PageTitle>Update Subscription</PageTitle>
+
+<div class="p-3" style="float:right">
+    <EditForm EditContext="@editContext">
+        <DataAnnotationsValidator />
+        <div class="form-group" style="width: 300px; margin-left:200px">
+            <label class="form-label">رقم هوية المشترك</label>
+            <InputText class="form-control form-control-lg" placeholder="1002442485 :مثــــال " @bind-Value="subscriptionFile.NwcSubscriptionFileSubscriberCode" dir="auto" />
+            <ValidationMessage For="@(() => subscriptionFile.NwcSubscriptionFileSubscriberCode)"></ValidationMessage>
+            <br />
+            <button type="submit" class="btn btn-primary" @onclick="@( () => ShowInfo())" id="show-btn">عرض المشترك</button>
+        </div>
+        <br />
+
+        @if (subscriptionFile.SubscriberFile is not null)
+        {
+            <div class="form-group">
+                <table class="table table-striped table-bordered table-hover" style="font-size:15px">
+                    <thead>
+                        <tr>
+                            <th>رقم الجوال</th>
+                            <th>الحي</th>
+                            <th>المدينة</th>
+                            <th>الإسم</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>@subscriptionFile.SubscriberFile.NwcSubscriberFileMobile</td>
+                            <td>@subscriptionFile.SubscriberFile.NwcSubscriberFileArea</td>
+                            <td>@subscriptionFile.SubscriberFile.NwcSubscriberFileCity</td>
+                            <td>@subscriptionFile.SubscriberFile.NwcSubscriberFileName</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="form-group">
+                <label class="form-label">رقم الاشتراك</label>
+                <InputSelect class="form-control form-control-lg" id="select-option" @bind-Value="@subscriptionFile.NwcSubscriptionFileNo">
+                    @foreach (var item in subscriptionFile.SubscriberFile.NwcSubscriptionFiles)
+                    {
+                        <option value="@item.NwcSubscriptionFileNo">@item.NwcSubscriptionFileNo</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="form-group">
+                <label class="form-label">عدد الوحدات</label>
+                <input class="form-control form-control-lg" type="text" step="1" lang="en" @bind-value="@inputUnit" onkeypress="return event.charCode >= 48 && event.charCode <= 57" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">نوع العقار</label>
+                <InputSelect class="form-control form-control-lg" id="select-option1" @bind-Value="@selectedEstateType" dir="rtl">
+                    @foreach (var item in estateTypes)
+                    {
+                        <option value="@item.NwcRrealEstateTypesName">@item.NwcRrealEstateTypesName</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="form-group">
+                <label class="form-label"> هل يوجدصرف صحي</label>
+                <InputSelect class="form-control form-control-lg" id="select-option" @bind-Value="@inputIsSanitation" dir="rtl">
+                    <option value="true">نعم</option>
+                    <option value="false">لا</option>
+                </InputSelect>
+            </div>
+            <div class="form-group">
+                <br />
+                <button type="submit" class="btn btn-primary" @onclick="@( () => HandleSubmit())" id="show-btn">حفظ</button>
+            </div>
+        }
+    </EditForm>
+</div>
+
+
+@code{
+    string inputUnit = "";
+    string selectedEstateType = "";
+    string inputIsSanitation = "";
+    NwcSubscriptionFile? subscriptionFile = new();
+    EditContext? editContext;
+    IList<NwcRrealEstateType> estateTypes;
+
+    protected override void OnInitialized()
+    {
+        editContext = new(subscriptionFile);
+    }
+    private async Task ShowInfo()
+    {
+        if (subscriptionFile.NwcSubscriptionFileSubscriberCode is not null
+            && subscriptionFile.NwcSubscriptionFileSubscriberCode.Length > 0
+            && subscriptionFile.NwcSubscriptionFileSubscriberCode.Length < 11)
+        {
+            if (_unitOfWork.SubscriptionData.Any(subscriptionFile.NwcSubscriptionFileSubscriberCode))
+            {
+                subscriptionFile.SubscriberFile = _unitOfWork.SubscribersData
+                 .GetFirstOrDefault(x => x.NwcSubscriberFileId == subscriptionFile.NwcSubscriptionFileSubscriberCode
+                , includeProperties: "NwcSubscriptionFiles");
+                estateTypes = _unitOfWork.EstateType.GetAll();
+                if (estateTypes is not null)
+                    selectedEstateType = estateTypes[0].NwcRrealEstateTypesName;
+                inputIsSanitation = "true";
+                subscriptionFile.NwcSubscriptionFileNo = subscriptionFile.SubscriberFile.NwcSubscriptionFiles.FirstOrDefault().NwcSubscriptionFileNo;
+                await OnAfterRenderAsync(false);
+            }
+            else
+            {
+                await jsRunTime.InvokeAsync<string>("fadeAlret", "رقم الهوية غير موجود!");
+            }
+        }
+        else
+        {
+            await jsRunTime.InvokeAsync<string>("fadeAlret", "الرقم غير صحيح!");
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        bool confirmed = await jsRunTime.InvokeAsync<bool>("confirm", "هل تريد تعديل بيانات رقم هذا الاشتراك بشكل نهائي؟");
+        if (confirmed)
+        {
+            inputUnit = inputUnit.Trim();
+            if (!inputUnit.All(char.IsDigit) || inputUnit is null || inputUnit == "")
+            {
+                await jsRunTime.InvokeAsync<string>("fadeAlret", "!فشل تحديث البيانات");
+                return;
+            }
+            var unitNo = int.Parse(inputUnit);
+            if(!(unitNo > 0 && unitNo < 100))
+            {
+                await jsRunTime.InvokeAsync<string>("fadeAlret", "! لا يمكن أن يتعدى عدد الوحدات 99");
+                return;
+            }
+            var sanitationBool = (inputIsSanitation.Equals("true")) ? true : false;
+            subscriptionFile = subscriptionFile.SubscriberFile.NwcSubscriptionFiles
+                .FirstOrDefault(x => x.NwcSubscriptionFileNo == subscriptionFile.NwcSubscriptionFileNo);
+            if (subscriptionFile is null)
+            {
+                await jsRunTime.InvokeAsync<string>("fadeAlret", "!فشل تحديث البيانات");
+                return;
+            }
+            subscriptionFile.NwcSubscriptionFileUnitNo = unitNo;
+            subscriptionFile.NwcSubscriptionFileIsThereSanitation = sanitationBool;
+            var estateType = _unitOfWork.EstateType
+                .GetFirstOrDefault(x => x.NwcRrealEstateTypesName == selectedEstateType);
+            if (estateType is null)
+            {
+                await jsRunTime.InvokeAsync<string>("fadeAlret", "!فشل تحديث البيانات");
+                return;
+            }
+            subscriptionFile.NwcSubscriptionFileRrealEstateTypesCode = estateType.NwcRrealEstateTypesCode;
+            editContext = new(subscriptionFile);
+            if (editContext is not null && editContext.Validate())
+            {
+                _unitOfWork.SubscriptionData.Update(subscriptionFile);
+                await _unitOfWork.Save();
+                _unitOfWork.ClearTracks();
+                await jsRunTime.InvokeAsync<string>("fadeAlret", "!تم تحديث البيانات");
+            }
+        }
+    }
+}

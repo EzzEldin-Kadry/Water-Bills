@@ -1,0 +1,139 @@
+﻿@page "/InvoiceEnq"
+@using NWC_Bills.Models;
+@using NWC_Bills.Services;
+
+@inject IUnitOfWork _unitOfWork;
+@inject IJSRuntime jsRunTime;
+
+<PageTitle>InvoiceEnq</PageTitle>
+
+
+
+<div class="p-3" style="float:right">
+    <EditForm EditContext="@editContext">
+        <DataAnnotationsValidator />
+        <div class="form-group">
+            <label class="form-label">استفسر عن فاتورة</label>
+            <InputText class="form-control form-control-lg mb-lg-auto" placeholder="2023-2-492 :مثــــال " @bind-Value="invoice.NwcInvoicesNo" id="code" dir="auto" />
+            <ValidationMessage For="@(() => invoice.NwcInvoicesNo)"></ValidationMessage>
+        </div>
+        <div class="form-group mt-3">
+            <button type="submit" class="btn btn-primary" @onclick="@( () => HandleSubmit())" id="show-btn">عرض الفاتورة</button>
+        </div>
+    </EditForm>
+</div>
+
+@if (invoice.NwcInvoicesSubscriptionNo is not null)
+{
+    <div>
+        <table class="table table-striped table-bordered table-hover" style="font-size:15px">
+            <thead>
+                <tr>
+                    <th>الاسم</th>
+                    <th>هوية المشترك</th>
+                    <th>رقم الاشتراك</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>@invoice.SubscriberFile.NwcSubscriberFileName</td>
+                    <td>@invoice.NwcInvoicesSubscriberNo</td>
+                    <td>@invoice.NwcInvoicesSubscriptionNo</td>
+                </tr>
+            </tbody>
+        </table>
+        <label class="form-label">التفاصيل</label>
+        <table class="table table-striped table-bordered table-hover" style="font-size:15px">
+            <thead>
+                <tr>
+                    <th>عدد الوحدات</th>
+                    <th>هل يوجد صرف صحي</th>
+                    <th>كمية الاستهلاك</th>
+                    <th>القراءة الحالية</th>
+                    <th>القراءة السابقة</th>
+                    <th>إلى تاريخ</th>
+                    <th>من تاريخ</th>
+                    <th>تاريخ الفاتورة</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>@invoice.SubscriptionFile.NwcSubscriptionFileUnitNo</td>
+                    @if (invoice.NwcInvoicesIsThereSanitation)
+                    {
+                        <td>نعم</td>
+                    }
+                    else
+                    {
+                        <td>لا</td>
+                    }
+                    <td>@invoice.NwcInvoicesAmountConsumption</td>
+                    <td>@invoice.NwcInvoicesCurrentConsumptionAmount</td>
+                    <td>@invoice.NwcInvoicesPreviousConsumptionAmount</td>
+                    <td>@invoice.NwcInvoicesTo.Year/@invoice.NwcInvoicesTo.Month/@invoice.NwcInvoicesTo.Day</td>
+                    <td>@invoice.NwcInvoicesFrom.Year/@invoice.NwcInvoicesFrom.Month/@invoice.NwcInvoicesFrom.Day</td>
+                    <td>@invoice.NwcInvoicesDate.Year/@invoice.NwcInvoicesDate.Month/@invoice.NwcInvoicesDate.Day</td>
+                </tr>
+            </tbody>
+        </table>
+        <label class="form-label">القيمة</label>
+        <table class="table table-striped table-bordered table-hover" style="font-size:15px">
+            <thead>
+                <tr>
+                    <th class="bg-success">إجمالي الفاتورة</th>
+                    <th>قيمة الفاتورة</th>
+                    <th>قيمة استهلاك الصرف الصحي</th>
+                    <th>قيمة استهلاك المياه</th>
+                    <th>نسبة الضريبة</th>
+                    <th>قيمة رسوم الخدمة</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="font-weight:bold">@invoice.NwcInvoicesTotalBill</td>
+                    <td>@invoice.NwcInvoicesTotalInvoice</td>
+                    <td>@invoice.NwcInvoicesWastewaterConsumptionValue</td>
+                    <td>@invoice.NwcInvoicesConsumptionValue</td>
+                    <td>@invoice.NwcInvoicesTaxRate %</td>
+                    <td>@invoice.NwcInvoicesServiceFee</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+}
+
+
+@code {
+    NwcInvoice? invoice = new();
+    EditContext? editContext;
+    protected override void OnInitialized()
+    {
+        editContext = new(invoice);
+    }
+    private async Task HandleSubmit()
+    {
+        if (invoice.NwcInvoicesNo == null || invoice.NwcInvoicesNo == "")
+        {
+            await jsRunTime.InvokeAsync<string>("fadeAlret", "ادخل رقم الفاتورة");
+            return;
+        }
+        invoice.NwcInvoicesNo = invoice.NwcInvoicesNo.Trim();
+        if (invoice.NwcInvoicesNo == "")
+        {
+            await jsRunTime.InvokeAsync<string>("fadeAlret", "ادخل رقم الفاتورة");
+            return;
+        }
+        var curInvoice = _unitOfWork.InvoiceData
+        .GetFirstOrDefault(x => x.NwcInvoicesNo == invoice.NwcInvoicesNo, includeProperties: "SubscriberFile,SubscriptionFile");
+        if (curInvoice is not null)
+        {
+            invoice = curInvoice;
+            await OnAfterRenderAsync(false);
+        }
+        else
+        {
+            await jsRunTime.InvokeAsync<string>("fadeAlret", "رقم الفاتورة غير موجود");
+            return;
+        }
+    }
+    }

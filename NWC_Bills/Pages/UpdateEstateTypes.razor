@@ -1,0 +1,82 @@
+﻿@page "/UpdateEstateTypes"
+@using NWC_Bills.Models;
+@using NWC_Bills.Services;
+
+@inject NavigationManager Navigation
+@inject IUnitOfWork _unitOfWork
+@inject IJSRuntime jsRunTime
+
+<PageTitle>Update Estate Types</PageTitle>
+
+<div class="p-3" style="float:right">
+    <EditForm EditContext="@editContext">
+        <DataAnnotationsValidator />
+        <div class="form-group">
+            <label for="code" class="form-label">رقم العقار</label>
+            <InputText class="form-control form-control-lg"  @bind-Value="estateType.NwcRrealEstateTypesCode" id="code" dir="auto" />
+            <ValidationMessage For="@(() => estateType.NwcRrealEstateTypesCode)"></ValidationMessage>
+        </div>
+        <div class="form-group">
+            <label for="name" class="form-label">اسم العقار</label>
+            <InputText class="form-control form-control-lg" @bind-Value="estateType.NwcRrealEstateTypesName" id="name" dir="rtl" />
+            <ValidationMessage For="@(() => estateType.NwcRrealEstateTypesName)"></ValidationMessage>
+        </div>
+        <div class="form-group">
+            <label for="reasons" class="form-label">ملاحظات</label>
+            <InputTextArea class="form-control form-control-lg" @bind-Value="estateType.NwcRrealEstateTypesReasons" id="reasons" dir="auto" />
+            <ValidationMessage For="@(() => estateType.NwcRrealEstateTypesReasons)"></ValidationMessage>
+        </div>
+        <div class="form-group mt-3">
+            <button type="submit" class="btn btn-primary" @onclick="@( () => HandleSubmit())">حفظ</button>
+            <button type="submit" class="btn btn-secondary" @onclick="@Cancel">إغلاق</button>
+        </div>
+        <ValidationSummary />
+    </EditForm>
+</div>
+
+        
+
+
+
+
+
+@code {
+    NwcRrealEstateType? estateType = new();
+    EditContext? editContext;
+    protected override void OnInitialized()
+    {
+        editContext = new(estateType);
+    }
+
+    private async Task HandleSubmit()
+    {
+        if(editContext is not null && editContext.Validate())
+        {
+            bool confirmed = await jsRunTime.InvokeAsync<bool>("confirm", "هل تريد تعديل بيانات رقم هذا العقار بشكل نهائي؟");
+            if(confirmed)
+            {
+                var UpdatedEstate = _unitOfWork.EstateType.GetFirstOrDefault
+                (x => x.NwcRrealEstateTypesCode == estateType.NwcRrealEstateTypesCode);
+                if (UpdatedEstate is not null && UpdatedEstate.NwcRrealEstateTypesCode != "0")
+                {
+                    _unitOfWork.EstateType.Update(estateType);
+                    await _unitOfWork.Save();
+                    await jsRunTime.InvokeAsync<string>("fadeAlret", "!تم تحديث البيانات");
+                    _unitOfWork.ClearTracks();
+                }
+                else
+                {
+                    await jsRunTime.InvokeAsync<string>("fadeAlret", "!فشل تحديث البيانات");
+                }
+            }
+        }
+        else
+        {
+            await jsRunTime.InvokeAsync<string>("fadeAlret", "!فشل تحديث البيانات");
+        }
+    }
+    protected void Cancel()
+    {
+        Navigation.NavigateTo("EstateTypes");
+    }
+}

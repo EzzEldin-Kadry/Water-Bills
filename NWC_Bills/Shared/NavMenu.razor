@@ -1,0 +1,66 @@
+﻿<div class="arabian">
+    <div class="top-row ps-3 navbar navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="">موقع فواتير استهلاك المياه</a>
+            <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+        </div>
+    </div>
+
+    <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+        <nav class="flex-column d-flex">
+            <div class="nav-item px-6 py-0">
+                <NavLink class="nav-link justify-content-center align-items-center" href="" Match="NavLinkMatch.All">
+                    تسجيل فاتورة
+                </NavLink>
+            </div>
+            <div class="nav-item px-6 py-0">
+                <NavLink class="nav-link justify-content-center align-items-center" href="UpdateSubscriberData">
+                    تحديث بيانات مشترك
+                </NavLink>
+            </div>
+            <div class="nav-item px-6 py-0">
+                <NavLink class="nav-link justify-content-center align-items-center" href="UpdateSubscription">
+                    تحديث بيانات اشتراك
+                </NavLink>
+            </div>
+            <div class="nav-item px-6 py-0">
+                <NavLink class="nav-link justify-content-center align-items-center" href="InvoiceEnq">
+                    استفسار عن فاتورة
+                </NavLink>
+            </div>
+            <div class="nav-item px-6 py-0">
+                <NavLink class="nav-link justify-content-center align-items-center" href="EstateTypes">
+                    بيانات أنواع العقارات
+                </NavLink>
+            </div>
+            <div class="nav-item px-6 py-0">
+                <NavLink class="nav-link justify-content-center align-items-center" href="SubscribersData/0">
+                    تقرير عن المشتركين
+                </NavLink>
+            </div>
+            <div class="nav-item px-6 py-0">
+                <NavLink class="nav-link justify-content-center align-items-center" href="SubscriptionData/0">
+                    تقرير عن الإشتراكات
+                </NavLink>
+            </div>
+            <div class="nav-item px-6 py-0">
+                <NavLink class="nav-link justify-content-center align-items-center" href="InvoiceData/0">
+                    تقرير الفواتير
+                </NavLink>
+            </div>
+        </nav>
+    </div>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}
