@@ -1,6 +1,8 @@
 # :wave:	 Water Bills Project
 A powerful web application built with Blazor Web Server and .NET Core 7 that allows administrators to manage water Invoices, subscriptions, and subscribers. The application provides a user-friendly interface for managing water bills, while also offering features such as automatic bill calculation based on water usage and current rates.
 
+*This project has been created and developed solely by me, Ezzeldin Kadry, as an individual effort*
+
 ## :writing_hand: Features
 Some of the key features of the application include:
 
